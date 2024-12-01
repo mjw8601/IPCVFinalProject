@@ -1,4 +1,13 @@
-add_subdirectory(classifiers)
-add_subdirectory(data_readers)
-add_subdirectory(evaluators)
-add_subdirectory(minkowski_distance)
+rit_add_executable(knnconcept
+  SOURCES
+    knnconcept.cpp
+)
+
+target_link_libraries(knnconcept 
+  Boost::filesystem
+  Boost::program_options
+  opencv_core
+  opencv_highgui
+  opencv_imgcodecs
+  opencv_imgproc
+)
