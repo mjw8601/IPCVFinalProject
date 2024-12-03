@@ -22,8 +22,8 @@ pip install opencv-python-headless numpy matplotlib
 How to Use
 ----------
 1. Clone this repository or download the script to your local machine:
-   git clone https://github.com/your-username/your-repo-name.git
-   cd your-repo-name
+   git clone https://github.com/mjw8601/IPCVFinalProject
+   cd IPCVFinalProject/Cropping
 
 2. Prepare your input images:
    - Place all uncropped images in a folder (e.g., `Cropping/uncropped`).
