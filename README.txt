@@ -29,8 +29,7 @@ How to Use
    - Place all uncropped images in a folder (e.g., `Cropping/uncropped`).
 
 3. Run the script:
-   python script_name.py
-   Replace `script_name.py` with the actual filename.
+   python plate_cropping.py
 
 4. Follow the instructions:
    - For each image, click on the four corners of the region you want to crop. Close the plot window after selecting the points.
@@ -40,7 +39,7 @@ How to Use
 Folder Structure
 -----------------
 project-folder/
-├── script_name.py       # The main script
+├── plate_cropping.py       # The main script
 ├── Cropping/
 │   ├── uncropped/       # Input images go here
 │   ├── cropped/         # Processed images will be saved here
@@ -57,7 +56,7 @@ Example Workflow
        └── image3.jpeg
 
 2. Run the script and interactively crop each image:
-   python script_name.py
+   python plate_cropping.py
 
 3. After processing, you’ll see the results in `Cropping/cropped`:
    Cropping/cropped/
