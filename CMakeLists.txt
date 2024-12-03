@@ -4,10 +4,6 @@ rit_add_executable(knnconcept
 )
 
 target_link_libraries(knnconcept 
-  Boost::filesystem
-  Boost::program_options
-  opencv_core
-  opencv_highgui
-  opencv_imgcodecs
-  opencv_imgproc
+  ${OpenCV_LIBS}     # All required opencv libraries
+  ${Boost_LIBRARIES} # All required boost libraries
 )

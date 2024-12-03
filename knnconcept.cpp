@@ -1,43 +1,20 @@
 #include <iostream>
-#include <vector>
-#include <cmath>
-#include <opencv2/core.hpp>
-#include <opencv2/highgui.hpp>
-#include <opencv2/imgproc.hpp>
+#include <vector> // std::vector
+#include <opencv2/core.hpp>    // opencv module
+#include <opencv2/highgui.hpp> // imshow
+#include <opencv2/imgproc.hpp> // img processing funcitons
+#include <boost/accumulators/accumulators.hpp> // Effeceint adding
+#include <boost/accumulators/statistics/weighted_mean.hpp> // Average
+#include <boost/accumulators/statistics/weighted_variance.hpp> // Weighted average
 
 using namespace std;
+namespace acc = boost::accumulators;
 
 // Functions - written below main
 void ColorReduce(const cv::Mat& src, cv::Mat& dst, const int& div=64);
-std::vector<cv::Mat> auto_extract_characters(cv::Mat& license_plate);
+std::vector<cv::Mat> auto_extract_characters(cv::Mat& license_plate, const bool& is_stored = true);
 
 int main(int argc, char* argv[]) {
-    // ##########################
-    // ###### OTSU TESTING ######
-    // ##########################
-
-    // // Read in image - less data the better
-    // cv::Mat src = cv::imread(argv[1], cv::IMREAD_GRAYSCALE);
-
-    // // Case 1: Just otsu's threshold
-    // cv::Mat otsu, otsu_reduced, otsu_blur;
-    // cv::threshold(src, otsu, 0, 255, cv::THRESH_OTSU | cv::THRESH_BINARY);
-
-    // // Case 2: Otsu after color reduction
-    // ColorReduce(src, otsu_reduced, 128);
-    // cv::threshold(otsu_reduced, otsu_reduced, 0, 255, cv::THRESH_OTSU | cv::THRESH_BINARY);
-
-    // // Case 3: Applied Gaussian blur 
-    // cv::GaussianBlur(src, otsu_blur, cv::Size(5, 5), 0);
-    // cv::threshold(otsu_blur, otsu_blur, 0, 255, cv::THRESH_BINARY | cv::THRESH_OTSU);
-
-    // cv::imshow("Source", src);
-    // cv::imshow("Otsu + color reduced", otsu_reduced);
-    // cv::imshow("otsu", otsu);
-    // cv::imshow("otsu + blur", otsu_blur);
-    // cv::waitKey(0);
-
-
     // ######################################
     // %% Automatic Character Segmentation %%
     // ######################################
@@ -98,30 +75,34 @@ void ColorReduce(const cv::Mat& src, cv::Mat& dst, const int& div)
  * \brief Automatically finds and extracts characters from license plates
  * 
  * \param[in] license_plate Grayscale license plate photo from parking lot / Grayscale license plate from isolate function
+ * \param[in] is_sorted If true, returns characters sorted left to right based on x-coordinate in license_plate
  * \return std::vector<cv::Mat> Vectorized list of every 32x32 [px] character unlabeled
  */
-std::vector<cv::Mat> auto_extract_characters(cv::Mat& license_plate) {
+std::vector<cv::Mat> auto_extract_characters(cv::Mat& license_plate, const bool& is_sorted) {
     // ###################
     // %% Preprocessing %%
     // ###################
 
-    // Threshold image to increase contrast
-    cv::GaussianBlur(license_plate, license_plate, cv::Size(5, 5), 0); // (Optional) Improves threshold results
-    cv::threshold(license_plate, license_plate, 80, 255,  cv::THRESH_BINARY | cv::THRESH_OTSU);
+    cv::Mat license_bilateral; // Bilateral does not support in-place operations
+    cv::bilateralFilter(license_plate, license_bilateral, 9, 200, 200);
+    license_plate = license_bilateral;
+    cv::GaussianBlur(license_plate, license_plate, cv::Size(5, 5), 0); 
+    // White text on a black background, findContours prefers it like this
+    cv::threshold(license_plate, license_plate, 80, 255,  cv::THRESH_BINARY_INV);
     
 
     // ###################
     // %% Find Contours %%
     // ###################
 
-    // White text on a black background, findContours prefers it like this
-    cv::bitwise_not(license_plate, license_plate);
-    
     std::vector<std::vector<cv::Point>> contours;
     cv::Mat license_copy = license_plate.clone();
 
-    // cv::imshow("plate", license_copy);
-    // cv::waitKey(0);
+
+    cv::namedWindow("pre-processed", cv::WINDOW_NORMAL);
+    cv::moveWindow("pre-processed", 600, 400);
+    cv::imshow("pre-processed", license_copy);
+    cv::waitKey(2);
 
     // Find contours of the binary image
     // RETR_TREE, RETR_LIST, RETR_CCOMP
@@ -131,36 +112,113 @@ std::vector<cv::Mat> auto_extract_characters(cv::Mat& license_plate) {
     // ########################
     // %% Extract Characters %%
     // ########################
+
+    // Vectors to hold characters
     std::vector<cv::Mat> characters;
+    std::vector<std::pair<cv::Mat, int>> characters_with_x_coords;
+
+    // Accumulator to do statistics
+    acc::accumulator_set<double, acc::features<acc::tag::weighted_mean, acc::tag::weighted_variance>, double> acc_set;
 
     for (const auto& contour : contours) {
         // Compute bounding box for each contour
         cv::Rect bounding_box = cv::boundingRect(contour);
+        double ratio = (double) bounding_box.height/bounding_box.width;
 
-        // Find characters based on size of their contours
-        if (bounding_box.width > 100 && bounding_box.width < 500 
-        && bounding_box.height > 50 && bounding_box.height < 700) { // (Adjustable) threshold values
-        cout << "Bounding size: " << bounding_box.size() << endl;
+        // A standard license plate is 1"x2.5625", so the height is its ratio
+        // Find characters based on their ratios
+        if (ratio > 2.0
+         && ratio < 5.0
+         && bounding_box.height > 25 
+         && bounding_box.width > 25) {
 
-            
             cv::Mat character = license_plate(bounding_box);
+            characters.push_back(character); // For statistics
 
             // Resize character to 32x32 [px]
             cv::Mat resized_character;
             cv::resize(character, resized_character, cv::Size(32, 32));
 
+            // Find whitepx (vs blackpx) to later sort out noisy contours
+            double whitepx_value = cv::sum(character)[0];
+            double weight = std::log(1 + whitepx_value); // Log weight
+
+            // Add value and weight to the accumulator
+            acc_set(whitepx_value, acc::weight = weight);
+
             // Add to the result vector
             // Pushback won't create new memory if it's already been allocated
-            characters.push_back(resized_character);
+            characters_with_x_coords.push_back({resized_character, bounding_box.x});
         }
     }
 
-    // Return list of characters
-    return characters; // vector<Mat>
 
+    // ################
+    // %% Statistics %%
+    // ################
+
+    double weighted_mean = acc::weighted_mean(acc_set);
+    double weighted_variance = acc::weighted_variance(acc_set);
+    double weighted_std_dev = std::sqrt(weighted_variance);
+
+
+    // #############################################
+    // %% Filter out noise contours w/ Statistics %%
+    // #############################################
+
+    double threshold = weighted_mean - weighted_std_dev;
+
+    auto it_characters = characters.begin();
+    auto it_coords = characters_with_x_coords.begin();
+
+    while (it_characters != characters.end() && it_coords != characters_with_x_coords.end()) {
+        double whitepx_value = cv::sum(*it_characters)[0]; // Get the white pixel value for the current character
+
+        // Check if the current character meets the threshold condition
+        if (whitepx_value <= threshold) {
+            // Remove from both vectors
+            it_characters = characters.erase(it_characters);
+            it_coords = characters_with_x_coords.erase(it_coords);
+        } else {
+            // Move to the next element in both vectors
+            ++it_characters;
+            ++it_coords;
+        }
+    }
+
+
+    // #####################
+    // %% Sort Characters %%
+    // #####################
+    if (is_sorted) {
+            std::sort(characters_with_x_coords.begin(), characters_with_x_coords.end(),
+                    [](const std::pair<cv::Mat, int>& a, const std::pair<cv::Mat, int>& b) {
+                        return a.second < b.second; // Sort by x-coordinate
+                    });
+    }
+
+    // Extract only the sorted characters
+    std:vector<cv::Mat> sorted_characters;
+    for (const auto& pair : characters_with_x_coords) {
+        sorted_characters.push_back(pair.first);
+    }
+
+    // Return list of characters
+    return sorted_characters; // vector<Mat>
 }
 
+/**
+ * \brief Displays original image followed by 
+ * 
+ * \param[in] character_list 
+ * \return 
+ */
+std::vector<uchar> label_characters (std::vector<cv::Mat>& character_list) {
+    // Vector to hold onto characters I've labeled
+    for (auto& character : character_list) {
 
+    }
+}
 
 
 
