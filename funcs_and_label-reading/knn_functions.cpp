@@ -70,11 +70,6 @@ std::vector<cv::Mat> AutoExtractCharacters(cv::Mat& license_plate, const bool& i
     std::vector<std::vector<cv::Point>> contours;
     cv::Mat license_copy = license_plate.clone();
 
-    cv::namedWindow("pre-processed", cv::WINDOW_NORMAL);
-    cv::moveWindow("pre-processed", 600, 400);
-    cv::imshow("pre-processed", license_copy);
-    cv::waitKey(200);
-
     // Find contours of the binary image
     // RETR_TREE, RETR_LIST, RETR_CCOMP
     cv::findContours(license_copy, contours, cv::RETR_TREE , cv::CHAIN_APPROX_NONE);
@@ -208,82 +203,6 @@ void Quantize(cv::Mat& src, cv::Mat& dst, const int bit_depth) {
     }
 }
 
-/**
- * \brief *TEST FUNCTION ONLY* Compares three most do-able methods for 
- *         iterating through cv::Mats doing elementwise operations
- * 
- * \param[in] test_image The unknown character image
- * \param[in] training_image The known training character image
- * \param[in] p Dimensionality of distance funciton
- */
-void MinkowskiDistanceMethodTest(const cv::Mat& test_image, const cv::Mat& training_image, const int& p) {
-
-    // ##############
-    // %% Method 1 %%
-    // ##############
-    auto start = std::chrono::high_resolution_clock::now();
-
-    const uint8_t* test_ptr = test_image.data;
-    const uint8_t* training_ptr = training_image.data;
-    int cols = test_image.cols;
-    double distance = 0;
-
-    for (int row = 0; row < test_image.rows; ++row) {
-        for (int col = 0; col < test_image.cols; ++col) {
-            uchar test_value = test_ptr[row * cols + col];
-            uchar training_value = training_ptr[row * cols + col];
-            distance += std::pow(std::abs(test_value - training_value), p);
-        }
-    }
-    distance = std::pow(distance, 1.0 / p);
-
-    auto end = std::chrono::high_resolution_clock::now();
-    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-
-    cout << "Distance calculation = " << distance << endl;
-    std::cout << "Execution Time Method 1: " << duration << " ms" << std::endl;
-    distance = 0; // Reset for next test
-    // ##############
-    // %% Method 2 %%
-    // ##############
-    start = std::chrono::high_resolution_clock::now();
-
-    test_image.forEach<uchar>([&](uchar &pixel, const int *position) -> void {
-        int row = position[0];
-        int col = position[1];
-
-        // Add to the total sum
-        distance += std::pow(std::abs(pixel - training_image.at<uchar>(row, col)), p);
-    });
-
-    distance = std::pow(distance, 1.0 / p);
-
-    end = std::chrono::high_resolution_clock::now();
-    duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-
-    cout << "Distance calculation = " << distance << endl;
-    std::cout << "Execution Time Method 1: " << duration << " ms" << std::endl;
-    distance = 0; // Reset for next test
-    // ##############
-    // %% Method 3 %%
-    // ##############
-    start = std::chrono::high_resolution_clock::now();
-
-    for (int row = 0; row < test_image.rows; ++row) {
-        const uint8_t* training_ptr_row = training_image.ptr<uchar>(row);
-        const uint8_t* test_ptr_row = test_image.ptr<uchar>(row);
-        for (int col = 0; col < test_image.cols; ++col) {
-            distance += std::pow(std::abs(training_ptr_row[col] - test_ptr_row[col]), p);
-        }
-    }
-    distance = std::pow(distance, 1.0 / p);
-
-    end = std::chrono::high_resolution_clock::now();
-    duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-    
-    cout << "Distance calculation = " << distance << endl;
-    std::cout << "Execution Time Method 3: " << duration << " ms" << std::endl;
-}
 
 /**
  * \brief Computes the distance between a test image and a training image for KNN comparisons

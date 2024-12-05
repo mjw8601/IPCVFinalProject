@@ -2,22 +2,13 @@
  * \file label_plates.cpp
  * \author Gian-Mateo Tifone (mt9485@rit.edu)
  * \brief Function to label all the characters in the license plates
- * \version 1.0
+ * \version 1.4
  * \date 12-05-2024
  * 
  * @copyright Copyright (c) 2024
  */
 
-#include "knn_functions.h"
-
-/**
- * TO RUN THE FILE
- * 1) Create a folder "license_plates" in the statistics directory
- * 2) Put all of your parking lot images into the "license_plates" folder
- * 3) Run: bin/label_plates
- * 3.5) When labeling, if you encounter noise not in the original image
- *      press the 'spacebar' to delete it
- */
+#include "../knn_functions.h"
 
 using namespace std;
 namespace fs = std::filesystem;
@@ -28,8 +19,8 @@ int main(int argc, char* argv[]) {
     // %% Output Directory %%
     // ######################
 
-    // Define the directory path
-    std::string directory_path = "../imgs/statistics/labeled_characters";
+    // Define the directory path 
+    std::string directory_path = "../imgs/statistics/labeling/labeled_characters";
 
     // Check if the directory exists
     if (!fs::exists(directory_path)) {
@@ -46,7 +37,7 @@ int main(int argc, char* argv[]) {
     // %% Read in RGB Images from Directory %%
     // #######################################
 
-    string plate_directory = "../imgs/statistics/license_plates";
+    string plate_directory = "../imgs/statistics/labeling/license_plates";
     std::vector<cv::Mat> license_plates;
     std::vector<std::string> image_filenames;
 
@@ -74,9 +65,10 @@ int main(int argc, char* argv[]) {
     // #######################################
 
     int input_key;
-    for (auto& plate : license_plates) {
+    for (size_t i = 0; i < license_plates.size(); ++i) {
 
         // Segment out characters to labeled
+        cv::Mat plate = license_plates[i];
         vector<cv::Mat> segmented_characters = AutoExtractCharacters(plate);
 
         // Display the character image
@@ -84,8 +76,9 @@ int main(int argc, char* argv[]) {
         cv::imshow("License Plate", plate);
 
         // Display all characters and let user annotate
-        for (size_t i = 0; i < segmented_characters.size(); ++i){
-            cv::imshow("character", segmented_characters[i]);
+        for (size_t j = 0; j < segmented_characters.size(); ++j){
+            // Show character
+            cv::imshow("character", segmented_characters[j]);
 
             // Read in user's keypress
             input_key = cv::waitKey(0);
@@ -94,11 +87,13 @@ int main(int argc, char* argv[]) {
             char character = static_cast<char>(input_key);
 
             // Add keypress to filename
-             std::string dst_filename = "../imgs/knn/labeled_characters/PlateLabel";
-            dst_filename.append(1, character).append("_").append(std::to_string(i)).append(".png");
+             std::string dst_filename = "../imgs/statistics/labeling/labeled_characters/PlateLabel";
+            dst_filename.append(1, character).append("_")
+            .append(std::to_string(i)).append(std::to_string(j))
+            .append(".png");
             
             // Write output image with the new filename
-            if (character != ' ') cv::imwrite(dst_filename, segmented_characters[i]);
+            if (character != ' ') cv::imwrite(dst_filename, segmented_characters[j]);
         }
 
     }
