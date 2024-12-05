@@ -1,7 +1,7 @@
 rit_add_executable(label_plates
   SOURCES
     label_plates.cpp
-    knn_functions.cpp
+    ../knn_functions.cpp
 )
 
 target_link_libraries(label_plates 
