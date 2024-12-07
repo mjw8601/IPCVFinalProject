@@ -77,6 +77,7 @@ int main(int argc, char* argv[]) {
 
         // Display all characters and let user annotate
         for (size_t j = 0; j < segmented_characters.size(); ++j){
+            cout << "Current plate #: " << i << j << endl;
             // Show character
             cv::imshow("character", segmented_characters[j]);
 
