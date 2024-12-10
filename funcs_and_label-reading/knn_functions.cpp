@@ -2,7 +2,7 @@
  * \file knn_functions.cpp
  * \author Gian-Mateo Tifone (mt9485@rit.edu)
  * \brief Implementation file for functions used in KNN project
- * \version 1.0
+ * \version 1.2
  * \date 12-05-2024
  * 
  * @copyright Copyright (c) 2024
@@ -55,12 +55,15 @@ std::vector<cv::Mat> AutoExtractCharacters(cv::Mat& license_plate, const bool& i
     // %% Preprocessing %%
     // ###################
 
+    license_plate -= 50;
+
     cv::Mat license_bilateral;
     cv::bilateralFilter(license_plate, license_bilateral, 9, 200, 200);
     license_plate = license_bilateral;
     cv::GaussianBlur(license_plate, license_plate, cv::Size(5, 5), 0); 
+
     // White text on a black background, findContours prefers it like this
-    cv::threshold(license_plate, license_plate, 80, 255,  cv::THRESH_BINARY_INV);
+    cv::threshold(license_plate, license_plate, 100, 255,  cv::THRESH_BINARY_INV);
     
 
     // ###################
@@ -91,7 +94,7 @@ std::vector<cv::Mat> AutoExtractCharacters(cv::Mat& license_plate, const bool& i
         cv::Rect bounding_box = cv::boundingRect(contour);
         double ratio = (double) bounding_box.height/bounding_box.width;
 
-        // A standard license plate is 1"x2.5625", so the height is its ratio
+        // A standard license plate is 1"x2.5625"
         // Find characters based on their ratios
         if (ratio > 2.0
          && ratio < 5.0
@@ -103,7 +106,7 @@ std::vector<cv::Mat> AutoExtractCharacters(cv::Mat& license_plate, const bool& i
 
             // Resize character to 32x32 [px]
             cv::Mat resized_character;
-            cv::resize(character, resized_character, cv::Size(32, 32));
+            cv::resize(character, resized_character, cv::Size(28, 28));
 
             // Find whitepx (vs blackpx) to later sort out noisy contours
             double whitepx_value = cv::sum(character)[0];
@@ -156,12 +159,13 @@ std::vector<cv::Mat> AutoExtractCharacters(cv::Mat& license_plate, const bool& i
     // #####################
     // %% Sort Characters %%
     // #####################
+
     if (is_sorted) {
-            std::sort(characters_with_x_coords.begin(), characters_with_x_coords.end(),
-                    [](const std::pair<cv::Mat, int>& a, const std::pair<cv::Mat, int>& b) {
-                        return a.second < b.second; // Sort by x-coordinate
-                    });
-    }
+        std::sort(characters_with_x_coords.begin(), characters_with_x_coords.end(),
+                [](const std::pair<cv::Mat, int>& a, const std::pair<cv::Mat, int>& b) {
+                    return a.second < b.second; // Sort by x-coordinate
+                });
+}
 
     // Extract only the sorted characters
     vector<cv::Mat> sorted_characters;
@@ -202,7 +206,6 @@ void Quantize(cv::Mat& src, cv::Mat& dst, const int bit_depth) {
         dst_data[i] = (src_data[i] / factor) * factor;
     }
 }
-
 
 /**
  * \brief Computes the distance between a test image and a training image for KNN comparisons

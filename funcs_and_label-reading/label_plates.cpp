@@ -66,6 +66,7 @@ int main(int argc, char* argv[]) {
 
     int input_key;
     for (size_t i = 0; i < license_plates.size(); ++i) {
+        cout << "Current plate #: " << i << endl;
 
         // Segment out characters to labeled
         cv::Mat plate = license_plates[i];
@@ -77,7 +78,6 @@ int main(int argc, char* argv[]) {
 
         // Display all characters and let user annotate
         for (size_t j = 0; j < segmented_characters.size(); ++j){
-            cout << "Current plate #: " << i << j << endl;
             // Show character
             cv::imshow("character", segmented_characters[j]);
 

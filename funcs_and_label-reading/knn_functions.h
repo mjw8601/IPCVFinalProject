@@ -27,7 +27,7 @@
  * \param[out] dst Reduced color image
  * \param[in]  div 256 / div = Amount of colors to reduce image into. Default int 64 
  */
-void ColorReduce(const cv::Mat& src, cv::Mat& dst, const int& div=64);
+void ColorReduce(const cv::Mat& src, cv::Mat& dst, const int& div = 64);
 
 /**
  * \brief Automatically finds and extracts characters from license plates
@@ -58,6 +58,7 @@ void Quantize(cv::Mat& src, cv::Mat& dst, const int bit_depth = 4);
  * \param[in] p Dimensionality of distance funciton. Default = 2 (Euclidian)
  */
 double MinkowskiDistance(const cv::Mat& test_image, const cv::Mat& training_image, const int& p = 2);
+
 
 
 
