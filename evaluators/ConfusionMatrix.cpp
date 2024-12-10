@@ -60,9 +60,15 @@ void ConfusionMatrix(const std::vector<unsigned char>& truth_labels,
     if (ascii_offset_for_labels == 0) {
       std::cout << std::setw(field_width) << predicted_label_idx;
     } else {
-      std::cout << std::setw(field_width)
-                << static_cast<unsigned char>(predicted_label_idx +
-                                              ascii_offset_for_labels);
+      if (ascii_offset_for_labels + predicted_label_idx > 57) {
+        std::cout << std::setw(field_width)
+                  << static_cast<unsigned char>(predicted_label_idx + 7 +
+                                                 ascii_offset_for_labels);
+      } else {
+        std::cout << std::setw(field_width)
+                  << static_cast<unsigned char>(
+                         predicted_label_idx + ascii_offset_for_labels);
+      }
     }
   }
   std::cout << std::endl;
@@ -86,10 +92,15 @@ void ConfusionMatrix(const std::vector<unsigned char>& truth_labels,
     if (ascii_offset_for_labels == 0) {
       std::cout << std::setw(field_width) << truth_label_idx << " |";
     } else {
-      std::cout << std::setw(field_width)
-                << static_cast<unsigned char>(truth_label_idx +
-                                              ascii_offset_for_labels)
-                << " |";
+      if (ascii_offset_for_labels + truth_label_idx > 57) {
+        std::cout << std::setw(field_width)
+                  << static_cast<unsigned char>(truth_label_idx + 7 +
+                                                 ascii_offset_for_labels) << " |";
+      } else {
+        std::cout << std::setw(field_width)
+                  << static_cast<unsigned char>(
+                         truth_label_idx + ascii_offset_for_labels) << " |";
+      }
     }
     for (std::size_t predicted_label_idx = 0;
          predicted_label_idx < number_of_labels; predicted_label_idx++) {
