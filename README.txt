@@ -18,10 +18,14 @@ Key Features:
 Repository Structure
 --------------------
 
-- `src/`: Contains the kNN implementation and preprocessing scripts.
-- `data/`: Placeholder for datasets (MNIST, RITCIS, and the custom license plate dataset).
-- `notebooks/`: Jupyter notebooks for exploratory data analysis and visualization.
-- `results/`: Contains outputs, confusion matrices, and performance summaries.
+- `App File/`: Contains the test file that reads in u-byte data and tests the kNN algorithm
+- `Cropping/`: Python Cropping script, unused but made for inital testing of license plate data
+- `classifiers/`: Contains the kNN implementation.
+- `data_readers/`: Carl Salvaggios MNIST Data reading functions, used in our kNN implementation.
+- `evaluators/`: Implementation of confusion matrix
+- `funcs_and_label-reading/`: Statistical Filtering functions and License plate labeling scripts
+- `minkowski_distance/`: Minkowski distance used for finding the nearest neighbors in kNN
+- `CMakeLists.txt`: CMakeLists to accompany minkowski distance.
 - `README.md`: Documentation for the repository.
 
 Methodology
