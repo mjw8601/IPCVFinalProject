@@ -62,25 +62,6 @@ While the system achieves high accuracy with its custom dataset, it struggles wi
 - Implementing adaptive thresholding for better contrast in preprocessing.
 - Experimenting with neural networks for more robust classification.
 
-Usage
------
-
-1. Clone this repository:
-   ```bash
-   git clone https://github.com/mjw8601/IPCVFinalProject.git
-   ```
-2. Install the required dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
-3. Run the preprocessing script:
-   ```bash
-   python preprocess.py
-   ```
-4. Train and test the kNN model:
-   ```bash
-   python knn_train_test.py
-   ```
 
 Contributors
 ------------
