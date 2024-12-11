@@ -24,7 +24,6 @@ Repository Structure
 - `data_readers/`: Carl Salvaggios MNIST Data reading functions, used in our kNN implementation.
 - `evaluators/`: Implementation of confusion matrix
 - `funcs_and_label-reading/`: Statistical Filtering functions and License plate labeling scripts
-- `minkowski_distance/`: Minkowski distance used for finding the nearest neighbors in kNN
 - `CMakeLists.txt`: CMakeLists to accompany minkowski distance.
 - `README.md`: Documentation for the repository.
 
