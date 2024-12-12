@@ -104,6 +104,7 @@ std::vector<cv::Mat> AutoExtractCharacters(cv::Mat& license_plate, const bool& i
             cv::Mat character = license_plate(bounding_box);
             characters.push_back(character); // For statistics
 
+
             // Resize character to 32x32 [px]
             cv::Mat resized_character;
             cv::resize(character, resized_character, cv::Size(28, 28));
@@ -178,6 +179,165 @@ std::vector<cv::Mat> AutoExtractCharacters(cv::Mat& license_plate, const bool& i
 }
 
 /**
+ * \brief Automatically finds and extracts characters from license plates
+ * 
+ * \param[in] license_plate Grayscale license plate photo from parking lot / Grayscale license plate from isolate function
+ * \param[in] is_sorted If true, returns characters sorted left to right based on x-coordinate in license_plate
+ * \param[out] rects Returns list of rectangles of accepted contours
+ * \return std::vector<cv::Mat> Vectorized list of every 32x32 [px] character unlabeled
+ */
+std::vector<cv::Mat> AutoExtractCharacters(cv::Mat& license_plate, std::vector<cv::Rect>& rects, const bool& is_sorted) {
+    // ###################
+    // %% Preprocessing %%
+    // ###################
+
+    license_plate -= 50;
+
+    cv::Mat license_bilateral;
+    cv::bilateralFilter(license_plate, license_bilateral, 15, 250, 250);
+    license_plate = license_bilateral;
+    cv::GaussianBlur(license_plate, license_plate, cv::Size(5, 5), 0); 
+
+    // White text on a black background, findContours prefers it like this
+    cv::threshold(license_plate, license_plate, 100, 255,  cv::THRESH_BINARY_INV);
+    
+
+    // ###################
+    // %% Find Contours %%
+    // ###################
+
+    std::vector<std::vector<cv::Point>> contours;
+    cv::Mat license_copy = license_plate.clone();
+
+    // Find contours of the binary image
+    // RETR_TREE, RETR_LIST, RETR_CCOMP
+    cv::findContours(license_copy, contours, cv::RETR_TREE, cv::CHAIN_APPROX_NONE);
+
+
+    // ########################
+    // %% Extract Characters %%
+    // ########################
+
+    // Vectors to hold characters
+    std::vector<cv::Mat> characters;
+    std::vector<std::pair<cv::Mat, int>> characters_with_x_coords;
+
+    // Accumulator to do statistics
+    acc::accumulator_set<double, acc::features<acc::tag::weighted_mean, acc::tag::weighted_variance>, double> acc_set;
+
+    for (const auto& contour : contours) {
+        // Compute bounding box for each contour
+        cv::Rect bounding_box = cv::boundingRect(contour);
+        double ratio = (double) bounding_box.height/bounding_box.width;
+
+        // A standard license plate is 1"x2.5625"
+        // Find characters based on their ratios
+        if (ratio > 2.0
+         && ratio < 5.0
+         && bounding_box.height > 50 
+         && bounding_box.width > 50) {
+
+            cv::Mat character = license_plate(bounding_box);
+            characters.push_back(character); // For statistics
+            rects.push_back(bounding_box);
+
+            // Resize character to 32x32 [px]
+            cv::Mat resized_character;
+            cv::resize(character, resized_character, cv::Size(28, 28));
+
+            // Find whitepx (vs blackpx) to later sort out noisy contours
+            double whitepx_value = cv::sum(character)[0];
+            double weight = std::log(1 + whitepx_value); // Log weight
+
+            // Add value and weight to the accumulator
+            acc_set(whitepx_value, acc::weight = weight);
+
+            // Add to the result vector
+            // Pushback won't create new memory if it's already been allocated
+            characters_with_x_coords.push_back({resized_character, bounding_box.x});
+        }
+    }
+
+
+    // ################
+    // %% Statistics %%
+    // ################
+
+    double weighted_mean = acc::weighted_mean(acc_set);
+    double weighted_variance = acc::weighted_variance(acc_set);
+    double weighted_std_dev = std::sqrt(weighted_variance);
+
+
+    // #############################################
+    // %% Filter out noise contours w/ Statistics %%
+    // #############################################
+
+    double threshold = weighted_mean - weighted_std_dev;
+
+    auto it_characters = characters.begin();
+    auto it_coords = characters_with_x_coords.begin();
+    auto it_rects = rects.begin();
+
+    while (it_characters != characters.end() && it_coords != characters_with_x_coords.end()) {
+        double whitepx_value = cv::sum(*it_characters)[0]; // Get the white pixel value for the current character
+
+        // Check if the current character meets the threshold condition
+        if (whitepx_value <= threshold) {
+            // Remove from vectors
+            it_characters = characters.erase(it_characters);
+            it_coords = characters_with_x_coords.erase(it_coords);
+            it_rects = rects.erase(it_rects);
+        } else {
+            // Move to the next element in vectors
+            ++it_characters;
+            ++it_coords;
+            ++it_rects;
+        }
+    }
+
+
+    // #####################
+    // %% Sort Characters %%
+    // #####################
+
+    // Sort characters and rects if needed
+    if (is_sorted) {
+        // Combine rects and characters_with_x_coords for simultaneous sorting
+        std::vector<std::tuple<cv::Mat, int, cv::Rect>> combined_data;
+
+        for (size_t i = 0; i < characters_with_x_coords.size(); ++i) {
+            combined_data.push_back(std::make_tuple(characters_with_x_coords[i].first,
+                                                    characters_with_x_coords[i].second,
+                                                    rects[i]));
+        }
+
+        // Sort by x-coordinate
+        std::sort(combined_data.begin(), combined_data.end(),
+                  [](const std::tuple<cv::Mat, int, cv::Rect>& a,
+                     const std::tuple<cv::Mat, int, cv::Rect>& b) {
+                      return std::get<1>(a) < std::get<1>(b); // Sort by x-coordinate
+                  });
+
+        // Extract sorted characters and rects
+        characters_with_x_coords.clear();
+        rects.clear();
+        for (const auto& data : combined_data) {
+            characters_with_x_coords.emplace_back(std::get<0>(data), std::get<1>(data));
+            rects.push_back(std::get<2>(data));
+        }
+    }
+
+    // Extract only the sorted characters
+    vector<cv::Mat> sorted_characters;
+    for (const auto& pair : characters_with_x_coords) {
+        sorted_characters.push_back(pair.first);
+    }
+
+    return sorted_characters;
+}
+
+
+/**
  * \brief Quantizes an image to the requestest bit depth. E.g. If given a uchar (uint8_t) and 
  *        bit depth is 4, the resulting image will only have 4 bits of color depth (uint4_t)
  *        which is: 256 -> 16
@@ -238,7 +398,5 @@ double MinkowskiDistance(const cv::Mat& test_image, const cv::Mat& training_imag
     
 
     }
-
-
 
 

@@ -39,6 +39,16 @@ void ColorReduce(const cv::Mat& src, cv::Mat& dst, const int& div = 64);
 std::vector<cv::Mat> AutoExtractCharacters(cv::Mat& license_plate, const bool& is_stored = true);
 
 /**
+ * \brief Automatically finds and extracts characters from license plates
+ * 
+ * \param[in] license_plate Grayscale license plate photo from parking lot / Grayscale license plate from isolate function
+ * \param[in] is_sorted If true, returns characters sorted left to right based on x-coordinate in license_plate
+ * \param[out] rects Returns list of rectangles of accepted contours
+ * \return std::vector<cv::Mat> Vectorized list of every 32x32 [px] character unlabeled
+ */
+std::vector<cv::Mat> AutoExtractCharacters(cv::Mat& license_plate, std::vector<cv::Rect>& rects, const bool& is_sorted = true);
+
+/**
  * \brief Quantizes an image to the requestest bit depth. E.g. If given a uchar (uint8_t) and 
  *        bit depth is 4, the resulting image will only have 4 bits of color depth (uint4_t)
  *        which is: 256 -> 16
